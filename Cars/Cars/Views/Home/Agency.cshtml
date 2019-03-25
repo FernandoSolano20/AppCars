@@ -1,0 +1,235 @@
+﻿<h2>Agency</h2>
+
+<div id="agencyOutput">
+
+</div>
+
+<div class="modal fade" id="EditAgencyModal" tabindex="-1" role="dialog" aria-labelledby="EditAgencyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="agencyEditOutput">
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="DeleteAgencyModal" tabindex="-1" role="dialog" aria-labelledby="DeleteAgencyModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" id="agencyDeleteOutput">
+
+        </div>
+    </div>
+</div>
+
+<script id="agencyTable" type="text/html">
+    <table class="table table-dark">
+        <thead>
+            <tr>
+                <th scope="row">Name Agency</th>
+                <th scope="row"><button class="createAgency" id="createAgency" type="button" data-toggle="modal" data-target="#EditAgencyModal" style="margin-left: 18px;">Create</button></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each agency}}
+            <tr data-id={{ID}}>
+                <th scope="row"><a href="Brand?={{ID}}">{{NameAgency}}</a></th>
+                <td>
+                    <button class="editAgency" type="button" data-toggle="modal" data-target="#EditAgencyModal">Edit</button>
+                    <button class="showModalDeleteAgency" type="button" data-toggle="modal" data-target="#DeleteAgencyModal">Delete</button>
+                </td>
+                {{/each}}
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script id="agencyEdit" type="text/html">
+    <div class="modal-header">
+        <h5 class="modal-title" id="EditAgencyModalLabel">Agency</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <form>
+            <div class="form-group">
+                <input type="hidden" name="id" id="id" value="{{ID}}" />
+                <label for="recipient-name" class="col-form-label">Name Agency:</label>
+                <input type="text" class="form-control" name="NameAgency" id="nameAgency" required value="{{NameAgency}}" />
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="submit" id="saveAgency" class="btn btn-primary" data-dismiss="modal">Save</button>
+        <button type="submit" class="btn btn-secondary" data-dismiss="modal">Close</button>
+    </div>
+</script>
+
+<script id="agencyDelete" type="text/html">
+    <div class="modal-header">
+        <h5 class="modal-title" id="EditAgencyModalLabel">Delete Agency {{NameAgency}}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <p>Are you sure to delete this Agency {{NameAgency}}?</p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" id="deleteAgency" class="btn btn-primary" data-dismiss="modal" data-id="{{ID}}">Delete</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+    </div>
+</script>
+
+@section scripts{
+    <script src="~/Scripts/handlebars.js"></script>
+    <script>
+
+        var agencyServer = (function () {
+
+            var agencyApiUrl = '/api/agency';
+
+            $(document).ajaxError(function (event, xhr) {
+                alert(xhr.status + ":" + xhr.statusText);
+            });
+
+            var getAgencies = function () {
+                return $.ajax(agencyApiUrl);
+            };
+
+            var getAgency = function (id) {
+                return $.ajax(agencyApiUrl + "/" + id);
+            };
+
+            var updateAgency = function (agency) {
+                return $.ajax(agencyApiUrl + "/" + agency.ID, {
+                    type: "PUT",
+                    data: agency
+                });
+            };
+
+            var addAgency = function (agency) {
+                return $.ajax(agencyApiUrl, {
+                    type: "POST",
+                    data: agency
+                });
+            };
+
+            var deleteAgency = function (id) {
+                return $.ajax(agencyApiUrl + "/" + id, {
+                    type: "DELETE"
+                });
+            };
+
+            return {
+                getAgencies: getAgencies,
+                getAgency: getAgency,
+                updateAgency: updateAgency,
+                addAgency: addAgency,
+                deleteAgency: deleteAgency
+            };
+        }());
+
+        (function () {
+
+            var templates = {};
+
+            var compileTemplates = function () {
+                templates.agencyTable = Handlebars.compile($("#agencyTable").html());
+                templates.agencyEdit = Handlebars.compile($("#agencyEdit").html());
+                templates.agencyDelete = Handlebars.compile($("#agencyDelete").html());
+            };
+
+            var refreshAgencies = function () {
+                agencyServer.getAgencies().done(showAllAgencies);
+            };
+
+            var editAgency = function () {
+                var id = getId(this);
+                agencyServer.getAgency(id).done(showAgencyForEdit);
+            };
+
+            var createAgency = function () {
+                var agency = { ID: 0, NameAgency: ""};
+                showAgencyForEdit(agency);
+            };
+
+            var showAllAgencies = function (data) {
+                var output = templates.agencyTable({ agency: data });
+                $("#agencyOutput").html(output);
+            };
+
+            var showAgencyForEdit = function (agency) {
+                var output = templates.agencyEdit(agency);
+                $("#agencyEditOutput").html(output);
+            };
+
+            var deleteAgency = function () {
+                var id = getIdDelete(this);
+                agencyServer.deleteAgency(id).done(refreshAgencies);
+            };
+
+            var showDeleteAgencyModal = function () {
+                var id = getId(this);
+                agencyServer.getAgency(id).done(showModalAgencyForDelete);
+            };
+
+            var showModalAgencyForDelete = function (agency) {
+                var output = templates.agencyDelete(agency);
+                $("#agencyDeleteOutput").html(output);
+            };
+
+            var clearEdit = function () {
+                $("#agencyEditOutput").empty();
+            };
+
+            var saveAgency = function () {
+                var agency = {
+                    "ID": $("#id").val(),
+                    "NameAgency": $("#nameAgency").val()
+                };
+
+                var operation;
+                if (agency.ID != "0") {
+                    operation = agencyServer.updateAgency(agency);
+                } else {
+                    operation = agencyServer.addAgency(agency);
+                }
+                operation.done(refreshAgencies, clearEdit);
+                return false;
+            };
+
+            function saveEnterEventHandler(event) {
+                //not execute the default code and i could put custom code and i will be execute
+                //also call events stopPropagation() or stopImmediatePropagation() to not execute in fathers o ihernce containers
+                if (event.keyCode == '13') {
+                    event.preventDefault();
+                    saveAgency();
+                    $('#EditAgencyModal').modal('toggle');
+                }
+            };
+
+            var wireEvents = function () {
+                $(document).on("click", ".editAgency", editAgency);
+                $(document).on("click", "#saveAgency", saveAgency);
+                $(document).on("click", "#createAgency", createAgency);
+                $(document).on("click", "#deleteAgency", deleteAgency);
+                $(document).on("click", ".showModalDeleteAgency", showDeleteAgencyModal);
+                $(document).on("keydown", "#nameAgency", saveEnterEventHandler);
+            };
+
+            var getId = function (element) {
+                return $(element).parents("tr").attr("data-id");
+            };
+
+            var getIdDelete = function (element) {
+                return $(element).attr("data-id");
+            };
+
+            $(function () {
+                wireEvents();//events onclick button edit or delete
+                compileTemplates();//Handlebars to create the html necessary
+                refreshAgencies();//get all agencies if is create or update
+            });
+        }());
+    </script>
+}

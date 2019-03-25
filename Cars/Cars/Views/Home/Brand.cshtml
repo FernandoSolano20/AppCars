@@ -1,0 +1,238 @@
+﻿
+<h2>Brands</h2>
+
+<div id="brandOutput">
+
+</div>
+
+<div class="modal fade" id="EditBrandModal" tabindex="-1" role="dialog" aria-labelledby="EditBrandModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="brandEditOutput">
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="DeleteBrandModal" tabindex="-1" role="dialog" aria-labelledby="DeleteBrandModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" id="brandDeleteOutput">
+
+        </div>
+    </div>
+</div>
+
+<script id="brandTable" type="text/html">
+    <table class="table table-dark">
+        <thead>
+            <tr>
+                <th scope="row">Name Brand</th>
+                <th scope="row"><button class="createBrand" id="createBrand" type="button" data-toggle="modal" data-target="#EditBrandModal" style="margin-left: 18px;">Create</button></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each brand}}
+            <tr data-id={{BrandID}}>
+                <th scope="row"><a href="Model?={{BrandID}}">{{BrandName}}</a></th>
+                <td>
+                    <button class="editBrand" type="button" data-toggle="modal" data-target="#EditBrandModal">Edit</button>
+                    <button class="showModalDeleteBrand" type="button" data-toggle="modal" data-target="#DeleteBrandModal">Delete</button>
+                </td>
+                {{/each}}
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script id="brandEdit" type="text/html">
+    <div class="modal-header">
+        <h5 class="modal-title" id="EditBrandModalLabel">Brand</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <form>
+            <div class="form-group">
+                <input type="hidden" name="id" id="id" value="{{BrandID}}" />
+                <label for="recipient-name" class="col-form-label">Name Brand:</label>
+                <input type="text" class="form-control" name="NameBrand" id="nameBrand" required value="{{BrandName}}" />
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="submit" id="saveBrand" class="btn btn-primary" data-dismiss="modal">Save</button>
+        <button type="submit" class="btn btn-secondary" data-dismiss="modal">Close</button>
+    </div>
+</script>
+
+<script id="brandDelete" type="text/html">
+    <div class="modal-header">
+        <h5 class="modal-title" id="EditBrandModalLabel">Delete Brand {{BrandName}}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <p>Are you sure to delete this Brand {{BrandName}}?</p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" id="deleteBrand" class="btn btn-primary" data-dismiss="modal" data-id="{{BrandID}}">Delete</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+    </div>
+</script>
+
+@section scripts{
+    <script src="~/Scripts/handlebars.js"></script>
+    <script>
+
+        var brandServer = (function () {
+
+            var brandApiUrl = '/api/brand';
+
+            $(document).ajaxError(function (event, xhr) {
+                alert(xhr.status + ":" + xhr.statusText);
+            });
+
+            var getBrands = function (idAgency) {
+                return $.ajax(brandApiUrl + "/agency/" + idAgency);
+            };
+
+            var getBrand = function (id) {
+                return $.ajax(brandApiUrl + "/" + id);
+            };
+
+            var updateBrand = function (brand) {
+                return $.ajax(brandApiUrl + "/updateBrand/" + brand.BrandID, {
+                    type: "PUT",
+                    data: brand
+                });
+            };
+
+            var addBrand = function (brand) {
+                return $.ajax(brandApiUrl + "/addBrand/", {
+                    type: "POST",
+                    data: brand
+                });
+            };
+
+            var deleteBrand = function (id) {
+                return $.ajax(brandApiUrl + "/deleteBrand/" + id, {
+                    type: "DELETE"
+                });
+            };
+
+            return {
+                getBrands: getBrands,
+                getBrand: getBrand,
+                updateBrand: updateBrand,
+                addBrand: addBrand,
+                deleteBrand: deleteBrand
+            };
+        }());
+
+        (function () {
+            var url = new URL(window.location.href);
+            var idAgency = parseInt(url.searchParams.get(""));
+            var templates = {};
+
+            var compileTemplates = function () {
+                templates.brandTable = Handlebars.compile($("#brandTable").html());
+                templates.brandEdit = Handlebars.compile($("#brandEdit").html());
+                templates.brandDelete = Handlebars.compile($("#brandDelete").html());
+            };
+
+            var refreshBrands = function () {
+                brandServer.getBrands(idAgency).done(showAllBrands);
+            };
+
+            var editBrand = function () {
+                var id = getId(this);
+                brandServer.getBrand(id).done(showBrandForEdit);
+            };
+
+            var createBrand = function () {
+                var brand = { BrandID: 0, AgencyID: idAgency, BrandName: "" };
+                showBrandForEdit(brand);
+            };
+
+            var showAllBrands = function (data) {
+                var output = templates.brandTable({ brand: data });
+                $("#brandOutput").html(output);
+            };
+
+            var showBrandForEdit = function (brand) {
+                var output = templates.brandEdit(brand);
+                $("#brandEditOutput").html(output);
+            };
+
+            var deleteBrand = function () {
+                var id = getIdDelete(this);
+                brandServer.deleteBrand(id).done(refreshBrands);
+            };
+
+            var showDeleteBrandModal = function () {
+                var id = getId(this);
+                brandServer.getBrand(id).done(showModalBrandForDelete);
+            };
+
+            var showModalBrandForDelete = function (brand) {
+                var output = templates.brandDelete(brand);
+                $("#brandDeleteOutput").html(output);
+            };
+
+            var clearEdit = function () {
+                $("#brandEditOutput").empty();
+            };
+
+            var saveBrand = function () {
+                var brand = {
+                    "BrandID": $("#id").val(),
+                    "AgencyID": idAgency,
+                    "BrandName": $("#nameBrand").val()
+                };
+
+                var operation;
+                if (brand.BrandID != "0") {
+                    operation = brandServer.updateBrand(brand);
+                } else {
+                    operation = brandServer.addBrand(brand);
+                }
+                operation.done(refreshBrands, clearEdit);
+                return false;
+            };
+
+            function saveEnterEventHandler(event) {
+                //not execute the default code and i could put custom code and i will be execute
+                //also call events stopPropagation() or stopImmediatePropagation() to not execute in fathers o ihernce containers
+                if (event.keyCode == '13') {
+                    event.preventDefault();
+                    savebrand();
+                    $('#EditBrandModal').modal('toggle');
+                }
+            };
+
+            var wireEvents = function () {
+                $(document).on("click", ".editBrand", editBrand);
+                $(document).on("click", "#saveBrand", saveBrand);
+                $(document).on("click", "#createBrand", createBrand);
+                $(document).on("click", "#deleteBrand", deleteBrand);
+                $(document).on("click", ".showModalDeleteBrand", showDeleteBrandModal);
+                $(document).on("keydown", "#nameBrand", saveEnterEventHandler);
+            };
+
+            var getId = function (element) {
+                return $(element).parents("tr").attr("data-id");
+            };
+
+            var getIdDelete = function (element) {
+                return $(element).attr("data-id");
+            };
+
+            $(function () {
+                wireEvents();//events onclick button edit or delete
+                compileTemplates();//Handlebars to create the html necessary
+                refreshBrands();//get all agencies if is create or update
+            });
+        }());
+    </script>
+}

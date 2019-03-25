@@ -1,0 +1,265 @@
+﻿
+<h2>Models</h2>
+
+<div id="modelOutput">
+
+</div>
+
+<div class="modal fade" id="EditModelModal" tabindex="-1" role="dialog" aria-labelledby="EditModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="modelEditOutput">
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="DeleteModelModal" tabindex="-1" role="dialog" aria-labelledby="DeleteModelModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" id="modelDeleteOutput">
+
+        </div>
+    </div>
+</div>
+
+<script id="modelTable" type="text/html">
+    <table class="table table-dark">
+        <thead>
+            <tr>
+                <th scope="row">Name Model</th>
+                <th scope="row"><button class="createModel" id="createModel" type="button" data-toggle="modal" data-target="#EditModelModal" style="margin-left: 18px;">Create</button></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each model}}
+            <tr data-id={{ModelID}}>
+                <th scope="row"><a class="showInformationModel" data-toggle="modal" data-target="#EditModelModal">{{ModelName}}</a></th>
+                <td>
+                    <button class="editModel" type="button" data-toggle="modal" data-target="#EditModelModal">Edit</button>
+                    <button class="showModalDeleteModel" type="button" data-toggle="modal" data-target="#DeleteModelModal">Delete</button>
+                </td>
+                {{/each}}
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script id="modelEdit" type="text/html">
+    <div class="modal-header">
+        <h5 class="modal-title" id="EditModelModalLabel">Model</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <form>
+            <div class="form-group">
+                <input type="hidden" name="id" id="id" value="{{ModelID}}" />
+                <label for="recipient-name" class="col-form-label">Name Model:</label>
+                <input type="text" class="form-control" name="NameModel" id="nameModel" required value="{{ModelName}}" />
+            </div>
+            <div class="form-group">
+                <label for="recipient-name" class="col-form-label">Price Model:</label>
+                <input type="text" class="form-control" name="PriceModel" id="priceModel" required value="{{Price}}" />
+            </div>
+            <div class="form-group">
+                <label for="recipient-name" class="col-form-label">Year Model:</label>
+                <input type="text" class="form-control" name="YearModel" id="yearModel" required value="{{Year}}" />
+            </div>
+            <div class="form-group">
+                <label for="recipient-name" class="col-form-label">Type of Engine Model:</label>
+                <input type="text" class="form-control" name="EngineModel" id="engineModel" required value="{{TypeEngine}}" />
+            </div>
+            <div class="form-group">
+                <label for="recipient-name" class="col-form-label">Stock of this Model:</label>
+                <input type="text" class="form-control" name="StockModel" id="stockModel" required value="{{Stock}}" />
+            </div>
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="submit" id="saveModel" class="btn btn-primary" data-dismiss="modal">Save</button>
+        <button type="submit" class="btn btn-secondary" data-dismiss="modal">Close</button>
+    </div>
+</script>
+
+<script id="modelDelete" type="text/html">
+    <div class="modal-header">
+        <h5 class="modal-title" id="EditModelModalLabel">Delete Model {{ModelName}}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <p>Are you sure to delete this Model {{ModelName}}?</p>
+    </div>
+    <div class="modal-footer">
+        <button type="button" id="deleteModel" class="btn btn-primary" data-dismiss="modal" data-id="{{ModelID}}">Delete</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+    </div>
+</script>
+
+@section scripts{
+    <script src="~/Scripts/handlebars.js"></script>
+    <script>
+
+        var modelServer = (function () {
+
+            var modelApiUrl = '/api/model';
+
+            $(document).ajaxError(function (event, xhr) {
+                alert(xhr.status + ":" + xhr.statusText);
+            });
+
+            var getModels = function (idAgency) {
+                return $.ajax(modelApiUrl + "/brand/" + idAgency);
+            };
+
+            var getModel = function (id) {
+                return $.ajax(modelApiUrl + "/" + id);
+            };
+
+            var updateModel = function (model) {
+                return $.ajax(modelApiUrl + "/updateModel/" + model.ModelID, {
+                    type: "PUT",
+                    data: model
+                });
+            };
+
+            var addModel = function (model) {
+                return $.ajax(modelApiUrl + "/addModel/", {
+                    type: "POST",
+                    data: model
+                });
+            };
+
+            var deleteModel = function (id) {
+                return $.ajax(modelApiUrl + "/deleteModel/" + id, {
+                    type: "DELETE"
+                });
+            };
+
+            return {
+                getModels: getModels,
+                getModel: getModel,
+                updateModel: updateModel,
+                addModel: addModel,
+                deleteModel: deleteModel
+            };
+        }());
+
+        (function () {
+            var url = new URL(window.location.href);
+            var idBrand = parseInt(url.searchParams.get(""));
+            var botonClassAtrr;
+            var templates = {};
+
+            var compileTemplates = function () {
+                templates.modelTable = Handlebars.compile($("#modelTable").html());
+                templates.modelEdit = Handlebars.compile($("#modelEdit").html());
+                templates.modelDelete = Handlebars.compile($("#modelDelete").html());
+            };
+
+            var refreshModels = function () {
+                modelServer.getModels(idBrand).done(showAllModels);
+            };
+
+            var editModel = function () {
+                var id = getId(this);
+                modelServer.getModel(id).done(showModelForEdit);
+                botonClassAtrr = this;
+            };
+
+            var createModel = function () {
+                var model = { ModelID: 0, BrandID: idBrand, ModelName: "" };
+                showModelForEdit(model);
+            };
+
+            var showAllModels = function (data) {
+                var output = templates.modelTable({ model: data });
+                $("#modelOutput").html(output);
+            };
+
+            var showModelForEdit = function (model) {
+                var output = templates.modelEdit(model);
+                $("#modelEditOutput").html(output);
+                if (botonClassAtrr.className != "editModel" && botonClassAtrr.className != "createModel") {
+                    $(".form-group > input").prop('disabled', true);
+                    $("#saveModel").css("display", "none");
+                }
+            };
+
+            var deleteModel = function () {
+                var id = getIdDelete(this);
+                modelServer.deleteModel(id).done(refreshModels);
+            };
+
+            var showDeleteModelModal = function () {
+                var id = getId(this);
+                modelServer.getModel(id).done(showModalModelForDelete);
+            };
+
+            var showModalModelForDelete = function (model) {
+                var output = templates.modelDelete(model);
+                $("#modelDeleteOutput").html(output);
+            };
+
+            var clearEdit = function () {
+                $("#modelEditOutput").empty();
+            };
+
+            var saveModel = function () {
+                var model = {
+                    "ModelID": $("#id").val(),
+                    "BrandID": idBrand,
+                    "ModelName": $("#nameModel").val(),
+                    "Price": $("#priceModel").val(),
+                    "Year": $("#yearModel").val(),
+                    "TypeEngine": $("#engineModel").val(),
+                    "Stock": $("#stockModel").val()
+                };
+
+                var operation;
+                if (model.ModelID != "0") {
+                    operation = modelServer.updateModel(model);
+                } else {
+                    operation = modelServer.addModel(model);
+                }
+                operation.done(refreshModels, clearEdit);
+                return false;
+            };
+
+            function saveEnterEventHandler(event) {
+                //not execute the default code and i could put custom code and i will be execute
+                //also call events stopPropagation() or stopImmediatePropagation() to not execute in fathers o ihernce containers
+                if (event.keyCode == '13') {
+                    event.preventDefault();
+                    saveModel();
+                    $('#EditModelModal').modal('toggle');
+                }
+            };
+
+            var wireEvents = function () {
+                $(document).on("click", ".editModel", editModel);
+                $(document).on("click", "#saveModel", saveModel);
+                $(document).on("click", "#createModel", createModel);
+                $(document).on("click", "#deleteModel", deleteModel);
+                $(document).on("click", ".showModalDeleteModel", showDeleteModelModal);
+                $(document).on("click", ".showInformationModel", editModel);
+                $(document).on("keydown", "#nameModel", saveEnterEventHandler);
+            };
+
+            var getId = function (element) {
+                return $(element).parents("tr").attr("data-id");
+            };
+
+            var getIdDelete = function (element) {
+                return $(element).attr("data-id");
+            };
+
+            $(function () {
+                wireEvents();//events onclick button edit or delete
+                compileTemplates();//Handlebars to create the html necessary
+                refreshModels();//get all agencies if is create or update
+            });
+        }());
+    </script>
+}
